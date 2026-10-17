@@ -105,7 +105,7 @@ def fetch_hackernews():
     r = requests.get(
         "https://hacker-news.firebaseio.com/v0/topstories.json",
         headers=headers, timeout=15)
-    ids = r.json()[:20]  # 取前20条筛（减少网络请求）
+    ids = r.json()[:12]  # 取前12条筛（减少网络请求）
     kw = ("AI", "LLM", "GPT", "agent", "Agent", "model", "language model",
           "OpenAI", "Claude", "Gemini", "diffusion", "transformer",
           "machine learning", "deep learning", "neural")
@@ -116,7 +116,7 @@ def fetch_hackernews():
         try:
             ir = requests.get(
                 "https://hacker-news.firebaseio.com/v0/item/{}.json".format(sid),
-                headers=headers, timeout=5)
+                headers=headers, timeout=3)
             it = ir.json()
             if not it:
                 continue
@@ -136,11 +136,11 @@ def fetch_hackernews():
 
 
 def fetch_hf_papers():
-    """HuggingFace Daily Papers：每日热门论文（国内镜像回退）"""
+    """HuggingFace Daily Papers：直接走国内镜像（huggingface.co 被墙）"""
     headers = {"User-Agent": "AI-Hotlist-Widget/1.0"}
     urls = [
+        "https://hf-mirror.com/api/daily_papers",  # 国内镜像，首选
         "https://huggingface.co/api/daily_papers",
-        "https://hf-mirror.com/api/daily_papers",  # 国内镜像
     ]
     data = None
     for url in urls:
