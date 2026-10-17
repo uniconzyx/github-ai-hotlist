@@ -105,7 +105,7 @@ def fetch_hackernews():
     r = requests.get(
         "https://hacker-news.firebaseio.com/v0/topstories.json",
         headers=headers, timeout=15)
-    ids = r.json()[:40]  # 取前40条筛
+    ids = r.json()[:20]  # 取前20条筛（减少网络请求）
     kw = ("AI", "LLM", "GPT", "agent", "Agent", "model", "language model",
           "OpenAI", "Claude", "Gemini", "diffusion", "transformer",
           "machine learning", "deep learning", "neural")
@@ -116,7 +116,7 @@ def fetch_hackernews():
         try:
             ir = requests.get(
                 "https://hacker-news.firebaseio.com/v0/item/{}.json".format(sid),
-                headers=headers, timeout=10)
+                headers=headers, timeout=5)
             it = ir.json()
             if not it:
                 continue
@@ -145,7 +145,7 @@ def fetch_hf_papers():
     data = None
     for url in urls:
         try:
-            r = requests.get(url, headers=headers, timeout=12)
+            r = requests.get(url, headers=headers, timeout=8)
             if r.status_code == 200:
                 data = r.json()
                 break
@@ -439,11 +439,14 @@ class HotlistWidget(QWidget):
         for k, btn in self.tab_buttons.items():
             btn.setStyleSheet(self._tab_style(active=(k == key)))
         self._update_more_link()
-        # 如果已有缓存数据，直接展示；否则拉取
         if self.items_data[key]:
             self._on_data_ready(self.items_data[key], True, key)
         else:
+            # 立即清空旧数据，避免切换后还显示上一个源的内容
+            self.list_widget.clear()
             self._start_loading()
+            names = dict((s[0], s[1]) for s in SOURCES)
+            self.time_lbl.setText("正在加载 " + names.get(key, key) + " …")
             self.fetch_current()
 
     # ---------------- 数据拉取 ----------------
