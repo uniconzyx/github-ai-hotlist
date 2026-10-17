@@ -200,6 +200,7 @@ class HotListItem(QWidget):
         rank_lbl.setAlignment(Qt.AlignCenter)
         f = QFont()
         f.setBold(True)
+        f.setPointSize(14)
         rank_lbl.setFont(f)
         if rank == 1:
             rank_lbl.setStyleSheet("color:#E44D4D;")
@@ -212,12 +213,12 @@ class HotListItem(QWidget):
 
         name_lbl = QLabel(name)
         name_lbl.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        name_lbl.setStyleSheet("color:#2B6CB0; font-size:13px;")
+        name_lbl.setStyleSheet("color:#2B6CB0; font-size:16px;")
         name_lbl.setToolTip(name)
         name_lbl.setTextFormat(Qt.PlainText)
 
         metric_lbl = QLabel("{} {:,}".format(metric_icon, metric))
-        metric_lbl.setStyleSheet("color:#4A90E2; font-size:12px; font-weight:bold;")
+        metric_lbl.setStyleSheet("color:#4A90E2; font-size:14px; font-weight:bold;")
         metric_lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
         lay.addWidget(rank_lbl)
