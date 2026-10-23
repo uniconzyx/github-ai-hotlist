@@ -51,15 +51,17 @@ ROW_STEP_MS       = 80           # 榜单逐条入场间隔 ms
 
 # 数据源定义：(key, 显示名, metric 图标, 兜底链接)
 SOURCES = [
-    ("github",     "AI项目", "★",
+    ("github",       "AI项目",   "★",
      "https://github.com/topics/artificial-intelligence"),
-    ("github_ml",  "机器学习", "★",
+    ("github_ml",    "机器学习", "★",
      "https://github.com/topics/machine-learning"),
-    ("github_py",  "Python", "★",
+    ("github_py",    "Python",   "★",
      "https://github.com/topics/python"),
-    ("hn",         "HN资讯", "▲",
+    ("embodied",     "具身智能", "🤖",
+     "https://github.com/topics/embodied-ai"),
+    ("hn",           "HN资讯",   "▲",
      "https://news.ycombinator.com"),
-    ("hf",         "HF论文", "⬆",
+    ("hf",           "HF论文",   "⬆",
      "https://huggingface.co/papers"),
 ]
 # 每个源对应的 GitHub 搜索关键词
@@ -190,6 +192,7 @@ FETCHERS = {
     "github":     lambda: fetch_github("AI"),
     "github_ml":  lambda: fetch_github("machine learning"),
     "github_py":  lambda: fetch_github("python"),
+    "embodied":   lambda: fetch_github("embodied AI robot"),
     "hn":         fetch_hackernews,
     "hf":         fetch_hf_papers,
 }
