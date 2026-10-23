@@ -38,8 +38,8 @@ from PyQt5.QtGui import (
 )
 
 # ============================ 可配置参数区 ============================
-WINDOW_WIDTH      = 460          # 窗口宽度 px（放大）
-WINDOW_HEIGHT     = 600          # 窗口高度 px（放大）
+WINDOW_WIDTH      = 500          # 窗口宽度 px（加宽容纳5个Tab）
+WINDOW_HEIGHT     = 620          # 窗口高度 px
 SCREEN_MARGIN     = 20           # 距屏幕右上角的边距 px
 REFRESH_INTERVAL  = 60 * 60      # 自动刷新间隔（秒）1 小时
 ITEM_COUNT        = 7            # 每个源的榜单条目数量
@@ -51,13 +51,23 @@ ROW_STEP_MS       = 80           # 榜单逐条入场间隔 ms
 
 # 数据源定义：(key, 显示名, metric 图标, 兜底链接)
 SOURCES = [
-    ("github", "GitHub", "★",
+    ("github",     "AI项目", "★",
      "https://github.com/topics/artificial-intelligence"),
-    ("hn",     "HN",     "▲",
+    ("github_ml",  "机器学习", "★",
+     "https://github.com/topics/machine-learning"),
+    ("github_py",  "Python", "★",
+     "https://github.com/topics/python"),
+    ("hn",         "HN资讯", "▲",
      "https://news.ycombinator.com"),
-    ("hf",     "HF论文", "⬆",
+    ("hf",         "HF论文", "⬆",
      "https://huggingface.co/papers"),
 ]
+# 每个源对应的 GitHub 搜索关键词
+GITHUB_QUERIES = {
+    "github": "AI",
+    "github_ml": "machine learning",
+    "github_py": "python",
+}
 # =====================================================================
 
 if getattr(sys, "frozen", False):
@@ -68,15 +78,16 @@ AVATAR_PATH = os.path.join(BASE_DIR, "avatar.png")
 
 
 # ============================ 数据拉取函数（子线程调用） ============================
-def fetch_github():
-    """GitHub Search：AI 项目，今天→近7天→近30天→近90天→不限时间"""
+def fetch_github(query="AI"):
+    """GitHub Search：按关键词搜项目，今天→近7天→近30天→不限时间"""
     today = datetime.now()
     headers = {"User-Agent": "AI-Hotlist-Widget/1.0"}
+    q = query.replace(" ", "+")
     for days in (0, 7, 30, 90):
         d = (today - timedelta(days=days)).strftime("%Y-%m-%d")
         url = ("https://api.github.com/search/repositories"
-               "?q=AI+created:>{0}&sort=stars&order=desc"
-               "&per_page={1}".format(d, ITEM_COUNT))
+               "?q={0}+created:>{1}&sort=stars&order=desc"
+               "&per_page={2}".format(q, d, ITEM_COUNT))
         r = requests.get(url, headers=headers, timeout=15)
         if r.status_code != 200:
             continue
@@ -85,7 +96,7 @@ def fetch_github():
             break
     else:
         url = ("https://api.github.com/search/repositories"
-               "?q=AI&sort=stars&order=desc&per_page={0}".format(ITEM_COUNT))
+               "?q={0}&sort=stars&order=desc&per_page={1}".format(q, ITEM_COUNT))
         r = requests.get(url, headers=headers, timeout=15)
         items = r.json().get("items", [])
     rows = []
@@ -176,9 +187,11 @@ def fetch_hf_papers():
 
 
 FETCHERS = {
-    "github": fetch_github,
-    "hn": fetch_hackernews,
-    "hf": fetch_hf_papers,
+    "github":     lambda: fetch_github("AI"),
+    "github_ml":  lambda: fetch_github("machine learning"),
+    "github_py":  lambda: fetch_github("python"),
+    "hn":         fetch_hackernews,
+    "hf":         fetch_hf_papers,
 }
 
 
