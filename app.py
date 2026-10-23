@@ -90,11 +90,15 @@ def fetch_github():
         items = r.json().get("items", [])
     rows = []
     for i, it in enumerate(items[:ITEM_COUNT]):
+        desc = (it.get("description") or "").strip()
+        if desc and len(desc) > 60:
+            desc = desc[:58] + "…"
         rows.append((
             i + 1,
             it.get("name", "?"),
             int(it.get("stargazers_count", 0)),
             it.get("html_url", ""),
+            desc,  # 一句话解释
         ))
     return rows
 
@@ -129,6 +133,7 @@ def fetch_hackernews():
                 title[:48] + ("…" if len(title) > 48 else ""),
                 int(it.get("score", 0)),
                 url,
+                "",  # HN 无 desc
             ))
         except Exception:
             continue
@@ -165,6 +170,7 @@ def fetch_hf_papers():
             title[:46] + ("…" if len(title) > 46 else ""),
             up,
             url,
+            "",  # HF 无 desc
         ))
     return rows
 
@@ -187,13 +193,17 @@ class ClickableLabel(QLabel):
 
 
 class HotListItem(QWidget):
-    """单条榜单：排名 | 名称 | 热度（图标+数字），点击打开链接"""
-    def __init__(self, rank, name, metric, url, metric_icon="★"):
+    """单条榜单：排名 | 名称+desc | 热度"""
+    def __init__(self, rank, name, metric, url, metric_icon="★", desc=""):
         super().__init__()
         self.url = url
-        lay = QHBoxLayout()
-        lay.setContentsMargins(10, 5, 10, 5)
-        lay.setSpacing(8)
+        outer = QVBoxLayout()
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+
+        row = QHBoxLayout()
+        row.setContentsMargins(10, 5, 10, 2)
+        row.setSpacing(8)
 
         rank_lbl = QLabel(str(rank))
         rank_lbl.setFixedWidth(26)
@@ -211,20 +221,27 @@ class HotListItem(QWidget):
         else:
             rank_lbl.setStyleSheet("color:#8A94A6;")
 
+        name_col = QVBoxLayout()
+        name_col.setSpacing(1)
         name_lbl = QLabel(name)
-        name_lbl.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        name_lbl.setStyleSheet("color:#2B6CB0; font-size:16px;")
+        name_lbl.setStyleSheet("color:#2B6CB0; font-size:16px; font-weight:bold;")
         name_lbl.setToolTip(name)
-        name_lbl.setTextFormat(Qt.PlainText)
+        name_col.addWidget(name_lbl)
+        if desc:
+            desc_lbl = QLabel(desc)
+            desc_lbl.setStyleSheet("color:#7A8AA0; font-size:12px;")
+            desc_lbl.setWordWrap(True)
+            name_col.addWidget(desc_lbl)
 
         metric_lbl = QLabel("{} {:,}".format(metric_icon, metric))
         metric_lbl.setStyleSheet("color:#4A90E2; font-size:14px; font-weight:bold;")
         metric_lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
-        lay.addWidget(rank_lbl)
-        lay.addWidget(name_lbl)
-        lay.addWidget(metric_lbl)
-        self.setLayout(lay)
+        row.addWidget(rank_lbl)
+        row.addLayout(name_col, 1)
+        row.addWidget(metric_lbl)
+        outer.addLayout(row)
+        self.setLayout(outer)
 
     def enterEvent(self, event):
         self.setStyleSheet("background: rgba(74,144,226,46); border-radius:9px;")
@@ -253,6 +270,7 @@ class HotlistWidget(QWidget):
         self._pending_rows = []
         self._pending_ok = True
         self._row_index = 0
+        self.click_through = False
 
         self.setWindowFlags(
             Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
@@ -491,14 +509,19 @@ class HotlistWidget(QWidget):
             self._row_timer.stop()
             self._finish_rows()
             return
-        rank, name, metric, url = self._pending_rows[self._row_index]
+        row_data = self._pending_rows[self._row_index]
+        if len(row_data) >= 5:
+            rank, name, metric, url, desc = row_data
+        else:
+            rank, name, metric, url = row_data
+            desc = ""
         icon = "★"
         for k, n, ic, u in SOURCES:
             if k == self.current_source:
                 icon = ic
                 break
         item = QListWidgetItem()
-        w = HotListItem(rank, name, metric, url, metric_icon=icon)
+        w = HotListItem(rank, name, metric, url, metric_icon=icon, desc=desc)
         item.setSizeHint(w.sizeHint())
         self.list_widget.addItem(item)
         self.list_widget.setItemWidget(item, w)
@@ -515,14 +538,38 @@ class HotlistWidget(QWidget):
 
     # ---------------- 拖动 ----------------
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.RightButton:
+            self._show_menu(event.globalPos())
+            return
+        if event.button() == Qt.LeftButton and not self.click_through:
             self.last_pos = event.globalPos()
 
     def mouseMoveEvent(self, event):
+        if self.click_through:
+            return
         if event.buttons() & Qt.LeftButton and not self.last_pos.isNull():
             delta = event.globalPos() - self.last_pos
             self.move(self.x() + delta.x(), self.y() + delta.y())
             self.last_pos = event.globalPos()
+
+    def _show_menu(self, pos):
+        from PyQt5.QtWidgets import QMenu
+        m = QMenu(self)
+        m.addAction("👆 点击穿透：" + ("开" if self.click_through else "关"),
+                    self._toggle_click_through)
+        m.addSeparator()
+        m.addAction("刷新", self.fetch_current)
+        m.addAction("退出", self.close)
+        m.exec_(pos)
+
+    def _toggle_click_through(self):
+        self.click_through = not self.click_through
+        if self.click_through:
+            self.setWindowFlags(self.windowFlags() | Qt.WindowTransparentForInput)
+        else:
+            self.setWindowFlags(self.windowFlags() & ~Qt.WindowTransparentForInput)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.show()
 
 
 if __name__ == "__main__":
